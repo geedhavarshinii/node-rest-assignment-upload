@@ -42,6 +42,63 @@ router.post("/signup", (req, res, next) => {
     })
 })
 
+router.post("login", (req, res, next) => {
+    Teacher.findOne({ email: req.body.email })
+      .exec()
+      .then((teacher) => {
+        if (teacher.length < 1) {
+          return res.status(401).json({
+            message: "Auth failed",
+          });
+        }
+        bcrypt.compare(req.body.password, teacher.password, (err, result) => {
+          if (err) {
+            return res.status(401).json({
+              message: "Auth failed",
+            });
+          }
+          if (result) {
+            const token = jwt.sign(
+              {
+                email: teacher.email,
+                teacherId: teacher._id,
+              },
+              process.env.JWT_KEY,
+              {
+                expiresIn: "1h",
+              }
+            );
+            return res.status(200).json({
+              message: "Auth successful",
+              token: token,
+            });
+          }
+          res.status(401).json({
+            message: "Auth failed",
+          });
+        });
+      })
+      .catch();
+  });
+  
+  router.delete("/:teacherId", checkAuth, (req, res, next) => {
+    Teacher.deleteOne({ _id: req.params.teacherId })
+      .exec()
+      .then((result) => {
+        res.status(200).json({
+          message: "Teacher deleted",
+        });
+      })
+      .catch((err) => {
+        res.status(500).json({
+          error: err,
+        });
+      });
+  });
+
+  module.exports = router;
+  
+
 // router.get("/", (req, res, next) => {
 //     Teacher.find().select("_id name email").populate("teacher", "name").exec().then((docs) => {
 //         res.status(200).json({

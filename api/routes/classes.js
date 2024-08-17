@@ -71,8 +71,8 @@ router.get("/", (req, res, next) => {
 router.post("/", (req, res, next) => {
   const new_class = new Class({
     _id: new mongoose.Types.ObjectId(),
-    teacher: req.body.teacherId,
-    students: req.body.studentsId,
+    teacher: req.body.teacher,
+    students: req.body.students,
   });
   new_class
     .save()
