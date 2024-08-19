@@ -6,6 +6,35 @@ const { default: mongoose } = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+router.get("/", (req, res) => {
+  Teacher.find()
+    .exec()
+    .then((teachers) => {
+        res.status(200).json({
+            teachers: teachers
+        })
+    })
+    .catch(err => {
+        res.status(500).json({
+            error: err
+        })
+    });
+});
+router.get("/:teacherId", (req, res) => {
+  Teacher.findById(req.params.teacherId)
+    .exec()
+    .then((teacher) => {
+        res.status(200).json({
+            teacher: teacher
+        })
+    })
+    .catch(err => {
+        res.status(500).json({
+            error: err
+        })
+    });
+});
+
 router.post("/signup", (req, res, next) => {
     Teacher.find({email: req.body.email}).exec().then((teacher) => {
         if (user.length >= 1){
@@ -65,7 +94,7 @@ router.post("login", (req, res, next) => {
               },
               process.env.JWT_KEY,
               {
-                expiresIn: "1h",
+                expiresIn: "24h",
               }
             );
             return res.status(200).json({
@@ -98,34 +127,3 @@ router.post("login", (req, res, next) => {
 
   module.exports = router;
   
-
-// router.get("/", (req, res, next) => {
-//     Teacher.find().select("_id name email").populate("teacher", "name").exec().then((docs) => {
-//         res.status(200).json({
-//             count: docs.length,
-//             teachers: docs.map((doc) => {
-//                 return {
-//                     _id: doc._id,
-//                     teacher: doc.teacher,
-//                     request: {
-//                         type: "GET",
-//                         url: "http://localhost:3000/teachers" + doc._id
-//                     }
-//                 }
-//             })
-//         })
-//     })
-//     .catch((err) => {
-//         res.status(500).json({
-//             error: err
-//         })
-//     })
-// })
-
-// router.post('/', (req, res, next) => {
-//     const teacher = new Teacher({
-//         _id : new mongoose.Types.ObjectId(),
-//         name: req.body.name,
-//         email: req.body.email,
-//     })
-// })

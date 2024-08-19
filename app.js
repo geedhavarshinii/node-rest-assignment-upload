@@ -7,8 +7,8 @@ const morgan = require("morgan");
 const classesRoutes = require("./api/routes/classes");
 const teachersRoutes = require("./api/routes/teachers");
 const studentsRoutes = require("./api/routes/students");
-// const assignmentsRoutes = require("./api/routes/assignments");
-// const answersRoutes = require("./api/routes/answers");
+const assignmentsRoutes = require("./api/routes/assignments");
+const answersRoutes = require("./api/routes/answers");
 
 mongoose.connect(
   "mongodb+srv://geedhavarshinii:" +
@@ -38,8 +38,8 @@ app.use((req, res, next) => {
 app.use("/classes", classesRoutes);
 app.use("/teachers", teachersRoutes);
 app.use("/students", studentsRoutes);
-// app.use("/assignments", assignmentsRoutes);
-// app.use("/answers", answersRoutes);
+app.use("/assignments", assignmentsRoutes);
+app.use("/answers", answersRoutes);
 
 app.use((req, res, next) => {
     const error = new Error("Not Found");

@@ -1,43 +1,40 @@
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
 const checkAuth = require("../middleware/checkAuth");
 const Class = require("../models/class");
-const Teacher = require("../models/teacher");
-const Student = require("../models/student");
 const mongoose = require("mongoose");
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "./uploads/");
-  },
-  filename: function (req, file, cb) {
-    const safeFileName =
-      new Date().toISOString().replace(/:/g, "-") + file.originalname;
-    cb(null, safeFileName);
-  },
-});
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, "./uploads/");
+//   },
+//   filename: function (req, file, cb) {
+//     const safeFileName =
+//       new Date().toISOString().replace(/:/g, "-") + file.originalname;
+//     cb(null, safeFileName);
+//   },
+// });
 
-const fileFilter = (req, file, cb) => {
-  if (
-    file.mimetype === "application/pdf" ||
-    file.mimetype === "application/msword" ||
-    file.mimetype ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    cb(null, true);
-  } else {
-    cb(null, false);
-  }
-};
+// const fileFilter = (req, file, cb) => {
+//   if (
+//     file.mimetype === "application/pdf" ||
+//     file.mimetype === "application/msword" ||
+//     file.mimetype ===
+//       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+//   ) {
+//     cb(null, true);
+//   } else {
+//     cb(null, false);
+//   }
+// };
 
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 1024 * 1024 * 5,
-  },
-  fileFilter: fileFilter,
-});
+// const upload = multer({
+//   storage: storage,
+//   limits: {
+//     fileSize: 1024 * 1024 * 5,
+//   },
+//   fileFilter: fileFilter,
+// });
 
 router.get("/", (req, res, next) => {
   Class.find()
