@@ -12,8 +12,14 @@ const answerSchema = mongoose.Schema({
     ref: "Student",
     require: true,
   },
-  uploadDate: { type: String, required: true },
-  answerPaper: { type: String, required: true },
+  uploadDate: {
+    type: String,
+    required: true,
+  },
+  answerPaper: {
+    type: String,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("Answer", answerSchema);

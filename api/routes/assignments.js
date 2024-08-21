@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 const checkAuth = require("../middleware/checkAuth");
 const multer = require("multer");
 
-const Assignment = require("../models/assignment");
+const Assignment = require("../models/assignments");
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -42,13 +40,14 @@ const upload = multer({
 
 router.get("/", (req, res, next) => {
   Assignment.find()
-    .select("_id class qpaper duedate")
+    .select("_id title class questionPaper dueDate")
     .then((docs) => {
       const response = {
-        count: docs.length(),
+        count: docs.length,
         assignments: docs.map((doc) => {
           return {
             _id: doc._id,
+            title: doc.title, 
             class: doc.class,
             questionPaper: doc.questionPaper,
             dueDate: doc.dueDate,
@@ -70,36 +69,38 @@ router.get("/", (req, res, next) => {
 });
 
 router.get("/:assignmentId", (req, res, next) => {
-    Assignment.findById(req.params.assignmentId)
-      .select("_id class qpaper duedate")
-      .then((doc) => {
-        if (!doc) {
-          return res.status(404).json({
-            message: "Assignment not found"
-          });
-        }
-        res.status(200).json({
-          _id: doc._id,
-          class: doc.class,
-          questionPaper: doc.questionPaper,
-          dueDate: doc.dueDate,
-          request: {
-            type: "GET",
-            url: "http://localhost:3000/uploads/assignments/" + doc.questionPaper,
-          },
+  Assignment.findById(req.params.assignmentId)
+    .select("_id title class questionPaper dueDate")
+    .then((doc) => {
+      if (!doc) {
+        return res.status(404).json({
+          message: "Assignment not found",
         });
-      })
-      .catch((err) => {
-        console.log(err);
-        res.status(500).json({
-          error: err,
-        });
+      }
+      res.status(200).json({
+        _id: doc._id,
+        title: doc.title, 
+        class: doc.class,
+        questionPaper: doc.questionPaper,
+        dueDate: doc.dueDate,
+        request: {
+          type: "GET",
+          url: "http://localhost:3000/uploads/assignments/" + doc.questionPaper,
+        },
       });
-  });
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({
+        error: err,
+      });
+    });
+});
 
 router.post("/", upload.single("questionPaper"), (req, res, next) => {
   const assignment = new Assignment({
     _id: new mongoose.Types.ObjectId(),
+    title: req.body.title,
     class: req.body.class,
     questionPaper: req.file.path,
     dueDate: req.body.dueDate,
@@ -112,7 +113,9 @@ router.post("/", upload.single("questionPaper"), (req, res, next) => {
         message: "Created assignment successfully",
         createdAssignment: {
           _id: result._id,
+          title: result.title, 
           class: result.class,
+          questionPaper: result.questionPaper,
           dueDate: result.dueDate,
           request: {
             type: "GET",
@@ -130,49 +133,28 @@ router.post("/", upload.single("questionPaper"), (req, res, next) => {
 });
 
 router.patch(
-  "/:assignmentId/questionPaper",
+  "/:assignmentId",
   checkAuth,
   upload.single("questionPaper"),
   (req, res, next) => {
     const id = req.params.assignmentId;
-    const updateOps = {
-      questionPaper: req.file.path,
-    };
+    const updateOps = {};
+
+    if (req.body.title) {
+      updateOps.title = req.body.title;
+    }
+    if (req.body.dueDate) {
+      updateOps.dueDate = req.body.dueDate; 
+    }
+    if (req.file) {
+      updateOps.questionPaper = req.file.path;
+    }
 
     Assignment.updateOne({ _id: id }, { $set: updateOps })
       .exec()
       .then((result) => {
         res.status(200).json({
-          message: "Assignment question paper updated",
-          request: {
-            type: "GET",
-            url: "http://localhost:3000/assignments/" + id,
-          },
-        });
-      })
-      .catch((err) => {
-        console.log(err);
-        res.status(500).json({
-          error: err,
-        });
-      });
-  }
-);
-
-router.patch(
-  "/:assignmentId/dueDate",
-  checkAuth,
-  (req, res, next) => {
-    const id = req.params.assignmentId;
-    const updateOps = {
-      dueDate: req.body.dueDate,
-    };
-
-    Assignment.updateOne({ _id: id }, { $set: updateOps })
-      .exec()
-      .then((result) => {
-        res.status(200).json({
-          message: "Assignment due date updated",
+          message: "Assignment updated",
           request: {
             type: "GET",
             url: "http://localhost:3000/assignments/" + id,

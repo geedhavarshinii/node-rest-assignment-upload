@@ -1,56 +1,25 @@
 const express = require("express");
 const router = express.Router();
 const checkAuth = require("../middleware/checkAuth");
-const Class = require("../models/class");
+const Class = require("../models/classes");
 const mongoose = require("mongoose");
 
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, "./uploads/");
-//   },
-//   filename: function (req, file, cb) {
-//     const safeFileName =
-//       new Date().toISOString().replace(/:/g, "-") + file.originalname;
-//     cb(null, safeFileName);
-//   },
-// });
-
-// const fileFilter = (req, file, cb) => {
-//   if (
-//     file.mimetype === "application/pdf" ||
-//     file.mimetype === "application/msword" ||
-//     file.mimetype ===
-//       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-//   ) {
-//     cb(null, true);
-//   } else {
-//     cb(null, false);
-//   }
-// };
-
-// const upload = multer({
-//   storage: storage,
-//   limits: {
-//     fileSize: 1024 * 1024 * 5,
-//   },
-//   fileFilter: fileFilter,
-// });
-
-router.get("/", (req, res, next) => {
+router.get("/", checkAuth, (req, res, next) => {
   Class.find()
-    .select("_id teacher students")
+    .select("_id subject teacher students")
     .exec()
     .then((docs) => {
       const response = {
         count: docs.length,
         classes: docs.map((doc) => {
           return {
-            _id: doc.id,
+            _id: doc._id,
+            subject: doc.subject,
             teacher: doc.teacher,
             students: doc.students,
             request: {
               type: "GET",
-              url: "http://localhost:3000/classes" + doc._id,
+              url: "http://localhost:3000/classes/" + doc._id,
             },
           };
         }),
@@ -65,9 +34,10 @@ router.get("/", (req, res, next) => {
     });
 });
 
-router.post("/", (req, res, next) => {
+router.post("/", checkAuth, (req, res, next) => {
   const new_class = new Class({
     _id: new mongoose.Types.ObjectId(),
+    subject: req.body.subject,
     teacher: req.body.teacher,
     students: req.body.students,
   });
@@ -76,9 +46,10 @@ router.post("/", (req, res, next) => {
     .then((result) => {
       console.log(result);
       res.status(201).json({
-        message: "Created class succesfully",
+        message: "Created class successfully",
         createdClass: {
           _id: result._id,
+          subject: result.subject,
           teacher: result.teacher,
           students: result.students,
           request: {
@@ -99,15 +70,16 @@ router.post("/", (req, res, next) => {
 router.get("/:classId", checkAuth, (req, res, next) => {
   const id = req.params.classId;
   Class.findById(id)
-    .select("_id teacher students")
+    .select("_id subject teacher students")
     .exec()
     .then((doc) => {
-      console.log("From database: ", doc);
       if (doc) {
         res.status(200).json({
-          new_class: doc,
-          description: "Get all classes",
-          url: "http://localhost:3000/classes",
+          class: doc,
+          request: {
+            type: "GET",
+            url: "http://localhost:3000/classes",
+          },
         });
       } else {
         res.status(404).json({
@@ -118,6 +90,241 @@ router.get("/:classId", checkAuth, (req, res, next) => {
     .catch((err) => {
       console.log(err);
       res.status(500).json({ error: err });
+    });
+});
+
+router.delete("/:classId", checkAuth, (req, res, next) => {
+  const id = req.params.classId;
+
+  Class.findById(id)
+    .select("teacher students subject")
+    .exec()
+    .then((classData) => {
+      if (!classData) {
+        return res.status(404).json({
+          message: "Class not found",
+        });
+      }
+
+      if (classData.teacher.toString() !== req.userData.userId) {
+        return res.status(403).json({
+          message: "You are not authorized to delete this class",
+        });
+      }
+
+      return Class.deleteOne({ _id: id })
+        .exec()
+        .then(() => {
+          res.status(200).json({
+            message: "Class deleted",
+            deletedClass: {
+              _id: id,
+              subject: classData.subject,
+              teacher: classData.teacher,
+              students: classData.students,
+            },
+            request: {
+              type: "POST",
+              url: "http://localhost:3000/classes",
+              body: {
+                subject: classData.subject,
+                teacher: classData.teacher,
+                students: classData.students,
+              },
+            },
+          });
+        });
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({
+        error: err,
+      });
+    });
+});
+
+router.patch("/:classId/addStudent/:studentId", checkAuth, (req, res, next) => {
+  const classId = req.params.classId;
+  const studentId = req.params.studentId;
+
+  Class.findById(classId)
+    .exec()
+    .then((classData) => {
+      if (!classData) {
+        return res.status(404).json({
+          message: "Class not found",
+        });
+      }
+
+      if (classData.teacher.toString() !== req.userData.userId) {
+        return res.status(403).json({
+          message: "You are not authorized to add students to this class",
+        });
+      }
+
+      return Class.findByIdAndUpdate(
+        classId,
+        { $addToSet: { students: studentId } },
+        { new: true }
+      ).exec();
+    })
+    .then((result) => {
+      if (result) {
+        res.status(200).json({
+          message: "Student added successfully",
+          class: result,
+          request: {
+            type: "GET",
+            url: "http://localhost:3000/classes/" + classId,
+          },
+        });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({
+        error: err,
+      });
+    });
+});
+
+router.patch(
+  "/:classId/deleteStudent/:studentId",
+  checkAuth,
+  (req, res, next) => {
+    const classId = req.params.classId;
+    const studentId = req.params.studentId;
+
+    Class.findById(classId)
+      .exec()
+      .then((classData) => {
+        if (!classData) {
+          return res.status(404).json({
+            message: "Class not found",
+          });
+        }
+
+        if (classData.teacher.toString() !== req.userData.userId) {
+          return res.status(403).json({
+            message:
+              "You are not authorized to remove students from this class",
+          });
+        }
+
+        return Class.findByIdAndUpdate(
+          classId,
+          { $pull: { students: studentId } },
+          { new: true }
+        ).exec();
+      })
+      .then((result) => {
+        if (result) {
+          res.status(200).json({
+            message: "Student removed successfully",
+            class: result,
+            request: {
+              type: "GET",
+              url: "http://localhost:3000/classes/" + classId,
+            },
+          });
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        res.status(500).json({
+          error: err,
+        });
+      });
+  }
+);
+
+router.patch("/:classId/addStudents", checkAuth, (req, res, next) => {
+  const classId = req.params.classId;
+  const studentIds = req.body.students;
+
+  Class.findById(classId)
+    .exec()
+    .then((classData) => {
+      if (!classData) {
+        return res.status(404).json({
+          message: "Class not found",
+        });
+      }
+
+      if (classData.teacher.toString() !== req.userData.userId) {
+        return res.status(403).json({
+          message: "You are not authorized to add students to this class",
+        });
+      }
+
+      return Class.findByIdAndUpdate(
+        classId,
+        { $addToSet: { students: { $each: studentIds } } },
+        { new: true }
+      ).exec();
+    })
+    .then((result) => {
+      if (result) {
+        res.status(200).json({
+          message: "Students added successfully",
+          class: result,
+          request: {
+            type: "GET",
+            url: "http://localhost:3000/classes/" + classId,
+          },
+        });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({
+        error: err,
+      });
+    });
+});
+
+router.patch("/:classId/deleteStudents", checkAuth, (req, res, next) => {
+  const classId = req.params.classId;
+  const studentIds = req.body.students;
+
+  Class.findById(classId)
+    .exec()
+    .then((classData) => {
+      if (!classData) {
+        return res.status(404).json({
+          message: "Class not found",
+        });
+      }
+
+      if (classData.teacher.toString() !== req.userData.userId) {
+        return res.status(403).json({
+          message: "You are not authorized to remove students from this class",
+        });
+      }
+
+      return Class.findByIdAndUpdate(
+        classId,
+        { $pull: { students: { $in: studentIds } } },
+        { new: true }
+      ).exec();
+    })
+    .then((result) => {
+      if (result) {
+        res.status(200).json({
+          message: "Students removed successfully",
+          class: result,
+          request: {
+            type: "GET",
+            url: "http://localhost:3000/classes/" + classId,
+          },
+        });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({
+        error: err,
+      });
     });
 });
 
