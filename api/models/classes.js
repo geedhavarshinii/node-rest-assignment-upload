@@ -11,11 +11,13 @@ const classSchema = mongoose.Schema({
     ref: "Teacher",
     required: true,
   },
-  students: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Student",
-    required: true,
-  }]
+  students: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Student",
+      required: true,
+    },
+  ],
 });
 
 module.exports = mongoose.model("Class", classSchema);
