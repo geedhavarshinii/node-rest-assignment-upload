@@ -30,7 +30,9 @@ router.get("/:studentId", async (req, res) => {
 // Student signup
 router.post("/signup", async (req, res) => {
   try {
-    const existingStudent = await Student.find({ email: req.body.email }).exec();
+    const existingStudent = await Student.find({
+      email: req.body.email,
+    }).exec();
     if (existingStudent.length >= 1) {
       return res.status(409).json({ message: "Mail exists" });
     }

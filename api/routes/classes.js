@@ -4,7 +4,7 @@ const checkAuth = require("../middleware/checkAuth");
 const Class = require("../models/classes");
 const mongoose = require("mongoose");
 
-router.get("/", checkAuth, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const docs = await Class.find()
       .select("_id subject teacher students")

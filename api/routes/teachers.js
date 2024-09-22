@@ -33,7 +33,9 @@ router.get("/:teacherId", async (req, res) => {
 // Teacher signup
 router.post("/signup", async (req, res) => {
   try {
-    const existingTeacher = await Teacher.find({ email: req.body.email }).exec();
+    const existingTeacher = await Teacher.find({
+      email: req.body.email,
+    }).exec();
     if (existingTeacher.length >= 1) {
       return res.status(409).json({ message: "Mail exists" });
     }
